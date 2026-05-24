@@ -41,21 +41,24 @@ export const fmp = {
   analystEstimates: (ticker: string) =>
     fmpFetch(`/analyst-estimates/${ticker}?limit=4`),
 
-  // 전일 종가 및 등락률
+  // 전일 종가 및 등락률 — /quote 무료 엔드포인트 사용
   eodLight: async (ticker: string): Promise<{
     today_close: number;
     prev_close: number;
     change_pct: number;
   }> => {
-    const data = await fmpFetch<Array<{ date: string; price?: number; close?: number; volume: number }>>(
-      `/historical-price-eod/light?symbol=${ticker}&limit=2`
-    );
-    if (!data || data.length < 2) {
-      throw new Error(`Insufficient EOD data for ${ticker}`);
+    const data = await fmpFetch<Array<{
+      price: number;
+      previousClose: number;
+      changesPercentage: number;
+    }>>(`/quote/${ticker}`);
+    if (!Array.isArray(data) || data.length === 0) {
+      throw new Error(`No quote data for ${ticker}`);
     }
-    const today_close = data[0].price ?? data[0].close ?? 0;
-    const prev_close = data[1].price ?? data[1].close ?? 0;
-    const change_pct = ((today_close - prev_close) / prev_close) * 100;
-    return { today_close, prev_close, change_pct };
+    return {
+      today_close: data[0].price,
+      prev_close: data[0].previousClose,
+      change_pct: data[0].changesPercentage,
+    };
   },
 };
