@@ -14,9 +14,9 @@ export interface NewsItem {
 }
 
 export interface PriceData {
-  price: number;
+  today_close: number;
   prev_close: number;
-  prev_change_pct: number; // (price - prev_close) / prev_close * 100
+  change_pct: number; // (today_close - prev_close) / prev_close * 100
 }
 
 export interface MarketContext {
