@@ -1,0 +1,1 @@
+- [소형 발사체·우주항공 업종](sector_small_launch_vehicle.md) — RKLB 분석 기준, 경쟁사·KPI·정책 이슈 (2025-2026 최신 데이터)

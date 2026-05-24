@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+*.class
+
+# Node / Next.js (frontend)
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env*
+frontend/.vercel
+frontend/*.tsbuildinfo
+frontend/next-env.d.ts
+frontend/.superpowers/
+frontend/coverage/
+
+# OS
+.DS_Store
+*.pem
+
+# IDE
+.idea/
+*.iml
