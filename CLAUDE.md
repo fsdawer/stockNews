@@ -66,3 +66,37 @@ Agent(subagent_type="sector-researcher",      prompt="[종목명] 업종 분석"
 ```
 
 모든 에이전트는 `memory: project` 로 설정되어 있으므로 프로젝트 메모리를 공유한다.
+
+---
+
+## API / 외부 서비스 변경 규칙
+
+### 절대 금지
+- 사용자 승인 없이 API 제공자를 임의로 교체하지 않는다.
+- 예: Finnhub → Yahoo Finance, Anthropic → Gemini 등
+
+### 변경이 필요한 상황 발생 시 의무 절차
+
+1. **문제 원인을 먼저 설명**한다.
+   - 예: "Finnhub 무료 티어가 `/stock/candle` 엔드포인트에 403을 반환합니다."
+
+2. **선택지를 제시**하고 사용자가 고르게 한다.
+   - 예:
+     > **A. Yahoo Finance** — API 키 불필요, 완전 무료, 비공식 API (언제든 막힐 수 있음)
+     > **B. Alpha Vantage** — 무료 키 발급 필요, 하루 25회 제한
+     > **C. FMP 유료 플랜 업그레이드** — 안정적이지만 비용 발생
+     >
+     > 어떤 방법으로 하시겠어요?
+
+3. **사용자가 선택한 후에만** 코드를 변경한다.
+
+### 현재 사용 중인 API 목록
+
+| 서비스 | 용도 | 플랜 |
+|--------|------|------|
+| Finnhub WebSocket | 실시간 가격 | 무료 |
+| Finnhub REST `/quote` | 전일 종가 | 무료 |
+| Yahoo Finance | 30일 차트 히스토리 | 무료 (비공식) |
+| FMP `/search-symbol` | 종목 검색 자동완성 | 무료 |
+| Supabase | DB, Auth | 무료 |
+| Gemini 1.5 Flash | 뉴스 번역/요약 | 무료 |
