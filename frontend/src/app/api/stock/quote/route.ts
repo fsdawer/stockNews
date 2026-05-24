@@ -8,13 +8,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const url = `https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${process.env.FINNHUB_API_KEY}`;
+    const token = process.env.FINNHUB_API_KEY ?? process.env.NEXT_PUBLIC_FINNHUB_KEY;
+    if (!token) throw new Error('FINNHUB_API_KEY not configured');
+
+    const url = `https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${token}`;
     const res = await fetch(url, { next: { revalidate: 60 } });
     if (!res.ok) throw new Error(`Finnhub error: ${res.status}`);
 
     const q = await res.json();
-    // c=현재가, pc=전일종가, dp=등락률(%)
-    if (!q.c) throw new Error('No quote data');
+    // c=현재가, pc=전일종가, dp=등락률(%) / 401이면 c,pc 모두 0
+    if (q.c === undefined || (q.c === 0 && q.pc === 0)) throw new Error('No quote data — check API key or ticker');
 
     return NextResponse.json({
       today_close: q.c,
