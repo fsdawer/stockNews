@@ -47,14 +47,14 @@ export const fmp = {
     prev_close: number;
     change_pct: number;
   }> => {
-    const data = await fmpFetch<Array<{ date: string; close: number; volume: number }>>(
+    const data = await fmpFetch<Array<{ date: string; price?: number; close?: number; volume: number }>>(
       `/historical-price-eod/light?symbol=${ticker}&limit=2`
     );
     if (!data || data.length < 2) {
       throw new Error(`Insufficient EOD data for ${ticker}`);
     }
-    const today_close = data[0].close;
-    const prev_close = data[1].close;
+    const today_close = data[0].price ?? data[0].close ?? 0;
+    const prev_close = data[1].price ?? data[1].close ?? 0;
     const change_pct = ((today_close - prev_close) / prev_close) * 100;
     return { today_close, prev_close, change_pct };
   },
