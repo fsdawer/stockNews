@@ -29,16 +29,13 @@ export default function Home() {
     setEodData(null);
     setChartData([]);
 
-    fetch(`/api/stock/quote?ticker=${ticker}`)
-      .then(r => r.ok ? r.json() : null)
-      .then((data: PriceData | null) => {
-        if (data) {
-          setEodData(data);
-          setChartData([{
-            time: new Date().toISOString().split('T')[0] as `${number}-${number}-${number}`,
-            value: data.today_close,
-          }]);
-        }
+    Promise.all([
+      fetch(`/api/stock/quote?ticker=${ticker}`).then(r => r.ok ? r.json() : null),
+      fetch(`/api/stock/history?ticker=${ticker}`).then(r => r.ok ? r.json() : []),
+    ])
+      .then(([quote, history]: [PriceData | null, LineData[]]) => {
+        if (quote) setEodData(quote);
+        if (Array.isArray(history) && history.length > 0) setChartData(history);
       })
       .catch(console.error)
       .finally(() => setEodLoading(false));
