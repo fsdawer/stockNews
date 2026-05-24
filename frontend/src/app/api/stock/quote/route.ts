@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (!token) throw new Error('FINNHUB_API_KEY not configured');
 
     const url = `https://finnhub.io/api/v1/quote?symbol=${ticker.toUpperCase()}&token=${token}`;
-    const res = await fetch(url, { next: { revalidate: 60 } });
+    const res = await fetch(url, { cache: 'no-store' }); // 캐시 금지 — 0 응답 캐시 방지
     if (!res.ok) throw new Error(`Finnhub error: ${res.status}`);
 
     const q = await res.json();

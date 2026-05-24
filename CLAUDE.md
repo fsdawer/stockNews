@@ -96,7 +96,7 @@ Agent(subagent_type="sector-researcher",      prompt="[종목명] 업종 분석"
 |--------|------|------|
 | Finnhub WebSocket | 실시간 가격 | 무료 |
 | Finnhub REST `/quote` | 전일 종가 | 무료 |
-| Yahoo Finance | 30일 차트 히스토리 | 무료 (비공식) |
+| Polygon.io | 30일 차트 히스토리 | 무료 (5회/분) |
 | FMP `/search-symbol` | 종목 검색 자동완성 | 무료 |
 | Supabase | DB, Auth | 무료 |
 | Gemini 1.5 Flash | 뉴스 번역/요약 | 무료 |
