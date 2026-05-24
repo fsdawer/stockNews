@@ -26,7 +26,8 @@ export function MarketSummary({ ticker }: MarketSummaryProps) {
       setLoading(true);
       try {
         const res = await fetch(`/api/market-context?ticker=${ticker}`);
-        let data: MarketContext | null = await res.json();
+        const raw = res.ok ? await res.json() : null;
+        let data: MarketContext | null = (raw && typeof raw === 'object' && !Array.isArray(raw) && !raw.error) ? raw : null;
 
         if (!data) {
           const postRes = await fetch('/api/market-context', {

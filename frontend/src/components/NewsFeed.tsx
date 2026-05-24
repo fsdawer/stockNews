@@ -22,7 +22,8 @@ export function NewsFeed({ ticker }: NewsFeedProps) {
       setLoading(true);
       try {
         const res = await fetch(`/api/news?ticker=${ticker}`);
-        const data: NewsItem[] = await res.json();
+        const raw = await res.json();
+        const data: NewsItem[] = Array.isArray(raw) ? raw : [];
 
         if (data.length === 0) {
           setTranslating(true);
@@ -33,10 +34,9 @@ export function NewsFeed({ ticker }: NewsFeedProps) {
               body: JSON.stringify({ ticker }),
             });
             const res2 = await fetch(`/api/news?ticker=${ticker}`);
-            const data2: NewsItem[] = await res2.json();
-            setNews(data2);
+            const raw2 = await res2.json();
+            setNews(Array.isArray(raw2) ? raw2 : []);
           } catch {
-            // translate failed — show empty state, not a crash
             setNews([]);
           } finally {
             setTranslating(false);
