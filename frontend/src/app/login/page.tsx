@@ -1,8 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -10,9 +12,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const supabase = useMemo(
+    () => createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    ),
+    []
   );
 
   async function handleSubmit(e: React.FormEvent) {
@@ -29,7 +34,7 @@ export default function LoginPage() {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        window.location.href = '/';
+        router.push('/');
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : '오류가 발생했습니다');
