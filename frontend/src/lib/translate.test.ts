@@ -44,3 +44,33 @@ describe('translateNews', () => {
     expect(result.headline_ko).toBe('headline');
   });
 });
+
+describe('translateNewsBatch', () => {
+  it('returns batch translated results', async () => {
+    const AnthropicMock = (await import('@anthropic-ai/sdk')).default as any;
+    AnthropicMock.mockImplementationOnce(function() {
+      return {
+        messages: {
+          create: vi.fn().mockResolvedValue({
+            content: [{
+              text: JSON.stringify([
+                { index: 1, headline_ko: '뉴스 제목 1', summary_ko: '요약 1', sentiment: '호재' },
+                { index: 2, headline_ko: '뉴스 제목 2', summary_ko: '요약 2', sentiment: '악재' },
+              ]),
+            }],
+          }),
+        },
+      };
+    });
+
+    const { translateNewsBatch } = await import('./translate');
+    const results = await translateNewsBatch([
+      { headline: 'News 1', summary: 'Summary 1' },
+      { headline: 'News 2', summary: 'Summary 2' },
+    ]);
+
+    expect(results).toHaveLength(2);
+    expect(results[0].headline_ko).toBe('뉴스 제목 1');
+    expect(results[1].sentiment).toBe('악재');
+  });
+});

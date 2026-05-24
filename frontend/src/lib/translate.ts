@@ -22,14 +22,17 @@ export async function translateNews(
       }],
     });
 
-    return JSON.parse(response.content[0].text) as TranslateResult;
-  } catch {
+    const block = response.content.find((b) => 'text' in b);
+    const text = block && 'text' in block ? (block as { text: string }).text : undefined;
+    if (!text) throw new Error('Empty response from Claude');
+    return JSON.parse(text) as TranslateResult;
+  } catch (err) {
+    console.error('[translate] translateNews failed, using fallback:', err);
     return { headline_ko: headline, summary_ko: summary, sentiment: '중립' };
   }
 }
 
 interface BatchNewsInput {
-  index: number;
   headline: string;
   summary: string;
 }
@@ -56,9 +59,13 @@ export async function translateNewsBatch(
       }],
     });
 
-    const results = JSON.parse(response.content[0].text) as BatchTranslateResult[];
+    const block = response.content.find((b) => 'text' in b);
+    const text = block && 'text' in block ? (block as { text: string }).text : undefined;
+    if (!text) throw new Error('Empty response from Claude');
+    const results = JSON.parse(text) as BatchTranslateResult[];
     return results;
-  } catch {
+  } catch (err) {
+    console.error('[translate] translateNewsBatch failed, using fallback:', err);
     return items.map((item, i) => ({
       index: i + 1,
       headline_ko: item.headline,
