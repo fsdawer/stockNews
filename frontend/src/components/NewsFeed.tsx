@@ -26,22 +26,26 @@ export function NewsFeed({ ticker }: NewsFeedProps) {
 
         if (data.length === 0) {
           setTranslating(true);
-          await fetch('/api/news/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ticker }),
-          });
-          setTranslating(false);
-
-          const res2 = await fetch(`/api/news?ticker=${ticker}`);
-          const data2: NewsItem[] = await res2.json();
-          setNews(data2);
+          try {
+            await fetch('/api/news/translate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ticker }),
+            });
+            const res2 = await fetch(`/api/news?ticker=${ticker}`);
+            const data2: NewsItem[] = await res2.json();
+            setNews(data2);
+          } catch {
+            // translate failed — show empty state, not a crash
+            setNews([]);
+          } finally {
+            setTranslating(false);
+          }
         } else {
           setNews(data);
         }
       } finally {
         setLoading(false);
-        setTranslating(false);
       }
     }
 

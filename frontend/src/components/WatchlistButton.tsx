@@ -20,19 +20,22 @@ export function WatchlistButton({ ticker, companyName }: WatchlistButtonProps) {
   }, [ticker]);
 
   async function toggle() {
+    const prev = inList;
     setLoading(true);
     try {
       if (inList) {
-        await fetch(`/api/watchlist?ticker=${ticker}`, { method: 'DELETE' });
-        setInList(false);
+        const res = await fetch(`/api/watchlist?ticker=${ticker}`, { method: 'DELETE' });
+        if (res.ok) setInList(false);
       } else {
-        await fetch('/api/watchlist', {
+        const res = await fetch('/api/watchlist', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ticker, company_name: companyName }),
         });
-        setInList(true);
+        if (res.ok) setInList(true);
       }
+    } catch {
+      setInList(prev); // rollback on network error
     } finally {
       setLoading(false);
     }

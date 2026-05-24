@@ -10,15 +10,17 @@ interface TradeData {
 
 function isPremarket(timestamp: number): boolean {
   const date = new Date(timestamp);
-  const hours = date.getUTCHours();
-  // Pre-market ET (4:00-9:30am) = UTC 8:00-13:30
-  return hours >= 8 && hours < 14;
+  const h = date.getUTCHours();
+  const m = date.getUTCMinutes();
+  // Pre-market ET (4:00-9:30am EDT) = UTC 8:00-13:30
+  return h * 60 + m >= 8 * 60 && h * 60 + m < 13 * 60 + 30;
 }
 
 export function useFinnhubWS(ticker: string | null) {
   const [trade, setTrade] = useState<TradeData | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectCount = useRef(0);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const MAX_RECONNECT = 3;
 
   useEffect(() => {
@@ -28,6 +30,13 @@ export function useFinnhubWS(ticker: string | null) {
     if (!apiKey) {
       console.warn('NEXT_PUBLIC_FINNHUB_KEY not set');
       return;
+    }
+
+    function scheduleReconnect() {
+      if (reconnectCount.current < MAX_RECONNECT) {
+        reconnectCount.current++;
+        reconnectTimer.current = setTimeout(connect, 5000 * reconnectCount.current);
+      }
     }
 
     function connect() {
@@ -52,22 +61,22 @@ export function useFinnhubWS(ticker: string | null) {
         }
       };
 
-      ws.onerror = () => {
-        if (reconnectCount.current < MAX_RECONNECT) {
-          reconnectCount.current++;
-          setTimeout(connect, 5000 * reconnectCount.current);
-        }
+      ws.onerror = () => scheduleReconnect();
+
+      ws.onclose = (e) => {
+        if (e.code !== 1000) scheduleReconnect();
       };
     }
 
     connect();
 
     return () => {
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
       if (wsRef.current) {
         if (wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify({ type: 'unsubscribe', symbol: ticker }));
         }
-        wsRef.current.close();
+        wsRef.current.close(1000);
       }
     };
   }, [ticker]);

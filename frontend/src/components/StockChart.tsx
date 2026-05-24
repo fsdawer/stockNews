@@ -7,7 +7,6 @@ import {
   type IChartApi,
   type ISeriesApi,
   type LineData,
-  type UTCTimestamp,
 } from 'lightweight-charts';
 
 interface StockChartProps {
@@ -36,7 +35,6 @@ export function StockChart({ ticker, data }: StockChartProps) {
       height: 280,
     });
 
-    // v5 API: addSeries(LineSeries, options) replaces addLineSeries(options)
     const series = chart.addSeries(LineSeries, {
       color: '#3b82f6',
       lineWidth: 2,
@@ -65,13 +63,14 @@ export function StockChart({ ticker, data }: StockChartProps) {
     }
   }, [data]);
 
-  if (!ticker) {
-    return (
-      <div className="flex items-center justify-center h-72 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-400 text-sm">
-        종목을 검색하세요
-      </div>
-    );
-  }
-
-  return <div ref={containerRef} className="w-full rounded-xl overflow-hidden" />;
+  return (
+    <div className="relative w-full rounded-xl overflow-hidden">
+      <div ref={containerRef} className="w-full" />
+      {!ticker && (
+        <div className="absolute inset-0 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 rounded-xl text-zinc-400 text-sm">
+          종목을 검색하세요
+        </div>
+      )}
+    </div>
+  );
 }
