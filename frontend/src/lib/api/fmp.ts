@@ -40,4 +40,22 @@ export const fmp = {
   // 수익 추정 (애널리스트)
   analystEstimates: (ticker: string) =>
     fmpFetch(`/analyst-estimates/${ticker}?limit=4`),
+
+  // 전일 종가 및 등락률
+  eodLight: async (ticker: string): Promise<{
+    today_close: number;
+    prev_close: number;
+    change_pct: number;
+  }> => {
+    const data = await fmpFetch<Array<{ date: string; close: number; volume: number }>>(
+      `/historical-price-eod/light?symbol=${ticker}&limit=2`
+    );
+    if (!data || data.length < 2) {
+      throw new Error(`Insufficient EOD data for ${ticker}`);
+    }
+    const today_close = data[0].close;
+    const prev_close = data[1].close;
+    const change_pct = ((today_close - prev_close) / prev_close) * 100;
+    return { today_close, prev_close, change_pct };
+  },
 };
