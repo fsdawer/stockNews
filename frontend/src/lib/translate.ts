@@ -17,7 +17,7 @@ const PROMPT_BATCH = (items: { headline: string; summary: string }[]) => {
   return `다음 금융 뉴스 ${items.length}건을 분석하세요.\n\n${numbered}\n\nJSON 배열로만 반환:\n[{"index":1,"headline_ko":"...","summary_ko":"...","sentiment":"호재|악재|중립"},...]`;
 };
 
-async function callGemini(prompt: string, maxTokens: number): Promise<string> {
+async function callGemini(prompt: string, maxTokens: number, retries = 2): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not set');
 
@@ -32,11 +32,17 @@ async function callGemini(prompt: string, maxTokens: number): Promise<string> {
       }),
     }
   );
+
+  // 429 레이트 리밋: 5초 대기 후 재시도
+  if (res.status === 429 && retries > 0) {
+    await new Promise(r => setTimeout(r, 5000));
+    return callGemini(prompt, maxTokens, retries - 1);
+  }
+
   if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
   if (!text) throw new Error('Empty Gemini response');
-  // JSON 블록만 추출
   const match = text.match(/```json\n?([\s\S]*?)\n?```/) ?? text.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
   return match ? match[1] ?? match[0] : text;
 }

@@ -8,7 +8,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-async function callGemini(prompt: string): Promise<string> {
+async function callGemini(prompt: string, retries = 2): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY not set');
   const res = await fetch(
@@ -22,6 +22,10 @@ async function callGemini(prompt: string): Promise<string> {
       }),
     }
   );
+  if (res.status === 429 && retries > 0) {
+    await new Promise(r => setTimeout(r, 5000));
+    return callGemini(prompt, retries - 1);
+  }
   if (!res.ok) throw new Error(`Gemini error: ${res.status}`);
   const data = await res.json();
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -49,6 +53,17 @@ export async function POST(request: NextRequest) {
   if (!ticker) return NextResponse.json({ error: 'ticker required' }, { status: 400 });
 
   const upperTicker = ticker.toUpperCase();
+
+  // 4시간 이내 캐시가 있으면 Gemini 재호출 없이 반환
+  const { data: cached } = await supabase
+    .from('market_context')
+    .select('*')
+    .eq('ticker', upperTicker)
+    .single();
+  if (cached?.updated_at) {
+    const age = Date.now() - new Date(cached.updated_at).getTime();
+    if (age < 4 * 60 * 60 * 1000) return NextResponse.json(cached);
+  }
 
   const { data: newsItems } = await supabase
     .from('news_cache')

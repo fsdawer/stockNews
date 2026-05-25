@@ -49,11 +49,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ translated: 0 });
   }
 
-  // 최신순 정렬 후 후보 20개만 추림 (Supabase in() 필터 URL 길이 제한 방지)
+  // 최신순 10개만 — Gemini 무료 티어 RPM 제한(15회/분) 고려
   const candidates = rawNews
     .filter(n => n.url && n.headline)
     .sort((a, b) => b.datetime - a.datetime)
-    .slice(0, 20);
+    .slice(0, 10);
 
   const candidateUrls = candidates.map(n => n.url);
   const { data: existing, error: selectError } = await supabase
@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
   let translatedCount = 0;
 
   for (let i = 0; i < newItems.length; i += BATCH_SIZE) {
+    if (i > 0) await new Promise(r => setTimeout(r, 2000)); // 배치 간 2초 대기 (RPM 제한 방어)
     const batch = newItems.slice(i, i + BATCH_SIZE);
     const inputs = batch.map((item) => ({
       headline: item.headline,
