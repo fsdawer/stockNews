@@ -4,10 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 import { finnhub } from '@/lib/api/finnhub';
 import { translateNewsBatch } from '@/lib/translate';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 interface FinnhubNewsItem {
   id: number;
@@ -22,6 +18,17 @@ export async function POST(request: NextRequest) {
   if (!ticker) {
     return NextResponse.json({ error: 'ticker required' }, { status: 400 });
   }
+
+  const svcKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!svcKey) {
+    return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY not set' }, { status: 500 });
+  }
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    svcKey,
+    { auth: { persistSession: false, autoRefreshToken: false } }
+  );
 
   const upperTicker = ticker.toUpperCase();
 
@@ -42,17 +49,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ translated: 0 });
   }
 
-  const urls = rawNews.map(n => n.url).filter(Boolean);
-  const { data: existing } = await supabase
+  // 최신순 정렬 후 후보 20개만 추림 (Supabase in() 필터 URL 길이 제한 방지)
+  const candidates = rawNews
+    .filter(n => n.url && n.headline)
+    .sort((a, b) => b.datetime - a.datetime)
+    .slice(0, 20);
+
+  const candidateUrls = candidates.map(n => n.url);
+  const { data: existing, error: selectError } = await supabase
     .from('news_cache')
     .select('source_url')
     .eq('ticker', upperTicker)
-    .in('source_url', urls);
+    .in('source_url', candidateUrls);
+
+  if (selectError) {
+    console.error('[translate] select error:', selectError.message);
+  }
 
   const existingUrls = new Set((existing ?? []).map((r: { source_url: string }) => r.source_url));
-  const newItems = rawNews
-    .filter(n => n.url && !existingUrls.has(n.url))
-    .slice(0, 20);
+  const newItems = candidates.filter(n => !existingUrls.has(n.url));
 
   if (newItems.length === 0) {
     return NextResponse.json({ translated: 0 });
@@ -88,7 +103,11 @@ export async function POST(request: NextRequest) {
       .from('news_cache')
       .upsert(rows, { onConflict: 'ticker,source_url' });
 
-    if (!error) translatedCount += batch.length;
+    if (error) {
+      console.error('[translate] upsert error:', error.message);
+    } else {
+      translatedCount += batch.length;
+    }
   }
 
   return NextResponse.json({ translated: translatedCount });
