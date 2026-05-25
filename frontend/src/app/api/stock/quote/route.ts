@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
     const q = await res.json();
     // c=현재가, pc=전일종가, dp=등락률(%) / 401이면 c,pc 모두 0
-    if (q.c === undefined || (q.c === 0 && q.pc === 0)) throw new Error('No quote data — check API key or ticker');
+    if (q.c === undefined) throw new Error('No quote data — check API key or ticker');
 
     return NextResponse.json({
       today_close: q.c,

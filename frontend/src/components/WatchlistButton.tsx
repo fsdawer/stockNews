@@ -1,25 +1,33 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface WatchlistButtonProps {
   ticker: string;
   companyName?: string;
+  isLoggedIn: boolean;
 }
 
-export function WatchlistButton({ ticker, companyName }: WatchlistButtonProps) {
+export function WatchlistButton({ ticker, companyName, isLoggedIn }: WatchlistButtonProps) {
+  const router = useRouter();
   const [inList, setInList] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!isLoggedIn) return;
     fetch('/api/watchlist')
       .then(r => r.ok ? r.json() : [])
       .then((items: Array<{ ticker: string }>) => {
         setInList(items.some(i => i.ticker === ticker));
       })
       .catch(() => {});
-  }, [ticker]);
+  }, [ticker, isLoggedIn]);
 
   async function toggle() {
+    if (!isLoggedIn) {
+      router.push('/login');
+      return;
+    }
     const prev = inList;
     setLoading(true);
     try {
@@ -35,7 +43,7 @@ export function WatchlistButton({ ticker, companyName }: WatchlistButtonProps) {
         if (res.ok) setInList(true);
       }
     } catch {
-      setInList(prev); // rollback on network error
+      setInList(prev);
     } finally {
       setLoading(false);
     }

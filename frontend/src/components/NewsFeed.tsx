@@ -25,7 +25,12 @@ export function NewsFeed({ ticker }: NewsFeedProps) {
         const raw = await res.json();
         const data: NewsItem[] = Array.isArray(raw) ? raw : [];
 
-        if (data.length === 0) {
+        // 영어 뉴스라도 먼저 표시
+        if (data.length > 0) setNews(data);
+
+        // 번역 안 된 항목이 있으면 번역 트리거
+        const needsTranslation = data.length === 0 || data.some(d => !d.translated_at);
+        if (needsTranslation) {
           setTranslating(true);
           try {
             await fetch('/api/news/translate', {
@@ -35,14 +40,13 @@ export function NewsFeed({ ticker }: NewsFeedProps) {
             });
             const res2 = await fetch(`/api/news?ticker=${ticker}`);
             const raw2 = await res2.json();
-            setNews(Array.isArray(raw2) ? raw2 : []);
+            const translated = Array.isArray(raw2) ? raw2 : [];
+            setNews(translated.length > 0 ? translated : data);
           } catch {
-            setNews([]);
+            // 번역 실패해도 영어 뉴스 유지
           } finally {
             setTranslating(false);
           }
-        } else {
-          setNews(data);
         }
       } finally {
         setLoading(false);
