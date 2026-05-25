@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
 import Link from 'next/link';
 import { SearchBar } from '@/components/SearchBar';
@@ -14,8 +15,15 @@ import { useAuth } from '@/hooks/useAuth';
 import type { PriceData } from '@/types';
 import { type OHLCVPoint, type Timespan } from '@/components/StockChart';
 
+interface StockProfile {
+  name: string;
+  logo: string | null;
+  exchange: string | null;
+}
+
 export default function Home() {
   const [ticker, setTicker] = useState<string | null>(null);
+  const [profile, setProfile] = useState<StockProfile | null>(null);
   const [eodData, setEodData] = useState<PriceData | null>(null);
   const [eodLoading, setEodLoading] = useState(false);
   const [chartData, setChartData] = useState<OHLCVPoint[]>([]);
@@ -38,18 +46,24 @@ export default function Home() {
       : null;
 
   useEffect(() => {
-    if (!ticker) return;
+    if (!ticker) {
+      setProfile(null);
+      return;
+    }
     setEodLoading(true);
     setEodData(null);
     setChartData([]);
+    setProfile(null);
 
     Promise.all([
       fetch(`/api/stock/quote?ticker=${ticker}`).then(r => r.ok ? r.json() : null),
       fetch(`/api/stock/history?ticker=${ticker}&timespan=${timespan}`).then(r => r.ok ? r.json() : []),
+      fetch(`/api/stock/profile?ticker=${ticker}`).then(r => r.ok ? r.json() : null),
     ])
-      .then(([quote, history]: [PriceData | null, OHLCVPoint[]]) => {
+      .then(([quote, history, prof]: [PriceData | null, OHLCVPoint[], StockProfile | null]) => {
         if (quote) setEodData(quote);
         if (Array.isArray(history) && history.length > 0) setChartData(history);
+        if (prof) setProfile(prof);
       })
       .catch(console.error)
       .finally(() => setEodLoading(false));
@@ -110,25 +124,41 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Price Panels */}
+      {/* 종목 헤더 — 로고 + 이름 + 가격 */}
       {ticker && (
-        <div className="flex gap-4 px-6 py-4">
-          <div>
-            <p className="text-xs text-zinc-500 mb-1">프리마켓</p>
-            <PricePanel
-              label="실시간"
-              price={trade?.price ?? null}
-              changePct={preMarketChangePct}
-            />
+        <div className="flex items-center gap-6 px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
+          {/* 로고 + 이름 */}
+          <div className="flex items-center gap-3 min-w-0">
+            {profile?.logo ? (
+              <Image
+                src={profile.logo}
+                alt={profile.name}
+                width={40}
+                height={40}
+                className="rounded-lg object-contain bg-white border border-zinc-200 dark:border-zinc-700 p-0.5 shrink-0"
+                unoptimized
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-zinc-500">{ticker.slice(0, 2)}</span>
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="font-bold text-base truncate">{profile?.name ?? ticker}</p>
+              <p className="text-xs text-zinc-400">{ticker}{profile?.exchange ? ` · ${profile.exchange}` : ''}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-zinc-500 mb-1">전일 정규장</p>
-            <PricePanel
-              label="마감가"
-              price={eodData?.today_close ?? null}
-              changePct={eodData?.change_pct ?? null}
-              loading={eodLoading}
-            />
+
+          {/* 가격 패널 */}
+          <div className="flex gap-4">
+            <div>
+              <p className="text-xs text-zinc-500 mb-1">프리마켓</p>
+              <PricePanel label="실시간" price={trade?.price ?? null} changePct={preMarketChangePct} />
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500 mb-1">전일 정규장</p>
+              <PricePanel label="마감가" price={eodData?.today_close ?? null} changePct={eodData?.change_pct ?? null} loading={eodLoading} />
+            </div>
           </div>
         </div>
       )}
@@ -144,7 +174,7 @@ export default function Home() {
         {/* Right 40% */}
         <div className="flex-[2] border-l border-zinc-200 dark:border-zinc-800 pl-4 flex flex-col">
           <h2 className="text-sm font-semibold text-zinc-500 mb-3">
-            {ticker ? `${ticker} 뉴스` : '뉴스'}
+            {ticker ? `${profile?.name ?? ticker} 뉴스` : '뉴스'}
           </h2>
           <NewsFeed ticker={ticker} />
         </div>

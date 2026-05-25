@@ -29,7 +29,9 @@ export function NewsFeed({ ticker }: NewsFeedProps) {
         if (data.length > 0) setNews(data);
 
         // 번역 안 된 항목이 있으면 번역 트리거
-        const needsTranslation = data.length === 0 || data.some(d => !d.translated_at);
+        // headline_ko === headline_en 이면 영어 그대로 저장된 것 (번역 실패 상태)
+        const needsTranslation = data.length === 0 ||
+          data.some(d => !d.translated_at || d.headline_ko === d.headline_en);
         if (needsTranslation) {
           setTranslating(true);
           try {
