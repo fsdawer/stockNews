@@ -1,5 +1,6 @@
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
 type Timespan = '1' | '5' | '15' | '60' | 'D' | 'W' | 'M';
 
@@ -18,6 +19,8 @@ interface FmpBar {
   low: number;
   close: number;
 }
+
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1시간
 
 function getPolygonParams(timespan: '1' | '5' | '15' | '60') {
   switch (timespan) {
@@ -53,7 +56,7 @@ function aggregateWeekly(daily: FmpBar[]): OHLCVPoint[] {
 function aggregateMonthly(daily: FmpBar[]): OHLCVPoint[] {
   const buckets = new Map<string, FmpBar[]>();
   for (const bar of daily) {
-    const key = bar.date.slice(0, 7); // YYYY-MM
+    const key = bar.date.slice(0, 7);
     if (!buckets.has(key)) buckets.set(key, []);
     buckets.get(key)!.push(bar);
   }
@@ -68,15 +71,45 @@ function aggregateMonthly(daily: FmpBar[]): OHLCVPoint[] {
     }));
 }
 
-async function fetchFmpDaily(ticker: string, apiKey: string): Promise<FmpBar[] | null> {
+async function getFmpDailyWithCache(ticker: string, fmpKey: string): Promise<FmpBar[] | null> {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // 캐시 조회
+  const { data: cached } = await supabase
+    .from('chart_cache')
+    .select('daily_json, updated_at')
+    .eq('ticker', ticker)
+    .single();
+
+  if (cached && cached.daily_json && cached.updated_at) {
+    const age = Date.now() - new Date(cached.updated_at).getTime();
+    if (age < CACHE_TTL_MS) {
+      return cached.daily_json as FmpBar[];
+    }
+  }
+
+  // FMP 호출
   const from = new Date(Date.now() - 1825 * 86400000).toISOString().split('T')[0];
   const to = new Date().toISOString().split('T')[0];
-  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${ticker}&from=${from}&to=${to}&apikey=${apiKey}`;
-  const res = await fetch(url, { next: { revalidate: 3600 } });
-  if (!res.ok) return null;
+  const url = `https://financialmodelingprep.com/stable/historical-price-eod/full?symbol=${ticker}&from=${from}&to=${to}&apikey=${fmpKey}`;
+  const res = await fetch(url);
+  if (!res.ok) return cached?.daily_json ?? null;
+
   const data = await res.json();
-  if (!Array.isArray(data) || data.length === 0) return null;
-  return (data as FmpBar[]).sort((a, b) => a.date.localeCompare(b.date));
+  if (!Array.isArray(data) || data.length === 0) return cached?.daily_json ?? null;
+
+  const sorted = (data as FmpBar[]).sort((a, b) => a.date.localeCompare(b.date));
+
+  // 캐시 저장 (실패해도 무시)
+  supabase.from('chart_cache').upsert(
+    { ticker, daily_json: sorted, updated_at: new Date().toISOString() },
+    { onConflict: 'ticker' }
+  ).then(() => {});
+
+  return sorted;
 }
 
 export async function GET(request: NextRequest) {
@@ -86,7 +119,7 @@ export async function GET(request: NextRequest) {
 
   const upperTicker = ticker.toUpperCase();
 
-  // 인트라데이: Polygon.io 유지
+  // 인트라데이: Polygon.io
   if (['1', '5', '15', '60'].includes(timespan)) {
     const polygonKey = process.env.POLYGON_API_KEY;
     if (!polygonKey) return NextResponse.json({ error: 'POLYGON_API_KEY not configured' }, { status: 500 });
@@ -106,11 +139,11 @@ export async function GET(request: NextRequest) {
     })));
   }
 
-  // 일봉/주봉/월봉: FMP (5년)
+  // 일봉/주봉/월봉: FMP + Supabase 캐시
   const fmpKey = process.env.FMP_API_KEY;
   if (!fmpKey) return NextResponse.json({ error: 'FMP_API_KEY not configured' }, { status: 500 });
 
-  const daily = await fetchFmpDaily(upperTicker, fmpKey);
+  const daily = await getFmpDailyWithCache(upperTicker, fmpKey);
   if (!daily) return NextResponse.json({ error: 'FMP fetch failed' }, { status: 502 });
 
   if (timespan === 'W') return NextResponse.json(aggregateWeekly(daily));
