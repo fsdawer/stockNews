@@ -55,7 +55,7 @@ async function callClaude(prompt: string, maxTokens: number): Promise<string> {
 }
 
 async function callAI(prompt: string, maxTokens: number): Promise<string> {
-  const provider = process.env.TRANSLATION_PROVIDER ?? 'claude';
+  const provider = process.env.TRANSLATION_PROVIDER ?? 'gemini';
   if (provider === 'gemini') return callGemini(prompt, maxTokens);
   return callClaude(prompt, maxTokens);
 }
