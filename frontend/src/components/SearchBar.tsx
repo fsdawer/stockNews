@@ -55,10 +55,28 @@ export function SearchBar({ onSearch }: SearchBarProps) {
     onSearch(ticker);
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = input.trim().toUpperCase();
-    if (trimmed) { setOpen(false); onSearch(trimmed); }
+    const q = input.trim();
+    if (!q) return;
+    setOpen(false);
+    // 자동완성 결과가 있으면 첫 번째 ticker 사용
+    if (results.length > 0) {
+      onSearch(results[0].ticker);
+      return;
+    }
+    // 없으면 API로 한글→ticker 변환 시도
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        onSearch(data[0].ticker);
+      } else {
+        onSearch(q.toUpperCase());
+      }
+    } catch {
+      onSearch(q.toUpperCase());
+    }
   }
 
   return (

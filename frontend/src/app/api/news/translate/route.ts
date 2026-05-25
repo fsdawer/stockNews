@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
   const candidateUrls = candidates.map(n => n.url);
   const { data: existing, error: selectError } = await supabase
     .from('news_cache')
-    .select('source_url')
+    .select('source_url, headline_en, headline_ko')
     .eq('ticker', upperTicker)
     .in('source_url', candidateUrls);
 
@@ -66,8 +66,13 @@ export async function POST(request: NextRequest) {
     console.error('[translate] select error:', selectError.message);
   }
 
-  const existingUrls = new Set((existing ?? []).map((r: { source_url: string }) => r.source_url));
-  const newItems = candidates.filter(n => !existingUrls.has(n.url));
+  // 이미 있어도 headline_ko가 영어 그대로인 경우 재번역 대상으로 포함
+  const alreadyTranslatedUrls = new Set(
+    (existing ?? [])
+      .filter((r: { headline_en: string; headline_ko: string }) => r.headline_ko && r.headline_ko !== r.headline_en)
+      .map((r: { source_url: string }) => r.source_url)
+  );
+  const newItems = candidates.filter(n => !alreadyTranslatedUrls.has(n.url));
 
   if (newItems.length === 0) {
     return NextResponse.json({ translated: 0 });

@@ -14,6 +14,10 @@ const KO_MAP: Record<string, string> = {
   스포티파이: 'SPOT', 에어비앤비: 'ABNB', 도어대시: 'DASH', 리프트: 'LYFT',
   샵이파이: 'SHOP', 스퀘어: 'SQ', 트위터X: 'X', 로블록스: 'RBLX',
   드래프트킹스: 'DKNG', ASML: 'ASML', TSMC: 'TSM',
+  코카콜라: 'KO', 코카: 'KO', 화이자: 'PFE',
+  모더나: 'MRNA', 버라이즌: 'VZ', 엑손모빌: 'XOM',
+  쉐브론: 'CVX', 골드만삭스: 'GS', JP모건: 'JPM', 뱅크오브아메리카: 'BAC',
+  씨티그룹: 'C', 웰스파고: 'WFC', 보잉: 'BA', 캐터필러: 'CAT',
 };
 
 export interface SearchResult {

@@ -11,7 +11,7 @@ function getPolygonParams(timespan: Timespan) {
     case '60': return { mult: 60, span: 'minute', daysBack: 14,  limit: 200, rev: 900 };
     case 'W':  return { mult: 1,  span: 'week',   daysBack: 180, limit: 26,  rev: 3600 };
     case 'M':  return { mult: 1,  span: 'month',  daysBack: 365, limit: 12,  rev: 3600 };
-    default:   return { mult: 1,  span: 'day',    daysBack: 30,  limit: 30,  rev: 3600 };
+    default:   return { mult: 1,  span: 'day',    daysBack: 90,  limit: 90,  rev: 3600 };
   }
 }
 
